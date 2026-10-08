@@ -66,7 +66,7 @@ let
       pnpm = pnpm_10;
       fetcherVersion = 4;
       # A fixed hash verifies the fetched package contents.
-      hash = "sha256-2Qtar7sVKGGhWR2vQsKH4UyUN7WiOoaqKCZcw6IDD1A=";
+      hash = "sha256-8GSbrUWQD3q9BqAFc6qC7RD6NlBi/IdnTO7k7ZySl1M=";
     };
 
     nativeBuildInputs = [

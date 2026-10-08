@@ -162,8 +162,8 @@ jobs:
           it. The equivalent matrix runs in the `Update NyaTerm` workflow instead,
           and `nix.yml` will run normally once a human pushes to this branch.
 
-          Review `flake.nix`, `flake.lock` and `nix/package.nix`. If the tag jumped
-          to a new major/minor line, the upstream tree layout changed and this needs
-          a real review rather than a hash bump.
+          Review `flake.nix`, `flake.lock` and `nix/package.nix`. The updater follows
+          the newest stable release across major/minor lines; check the upstream
+          source layout and package version for compatibility.
           BODY
           )"

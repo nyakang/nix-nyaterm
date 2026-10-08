@@ -64,17 +64,17 @@ nix develop
 
 ```bash
 ./scripts/update-upstream.sh          # 更新工作区，是否提交由你决定
-./scripts/update-upstream.sh --commit # 更新并提交
+./scripts/update-upstream.sh --commit # 更新并提交（受管理文件需无未提交修改）
 ```
 
-它会将 Tag 推进到同一版本线上的最新 Release，刷新 `flake.lock`，然后逐个采纳 Nix 报告的 fixed-output hash，直到构建通过。若是其他原因导致构建失败，会原样报错，而不会用改 hash 的方式掩盖问题。Tag 只在同一版本线内推进；若出现新的 major/minor 版本线，脚本会给出警告而不会自行跳转。
+它会将 Tag 推进到所有 major/minor 版本线中最新的稳定版 `vX.Y.Z`，并跳过 preview、beta 等预发布标签；随后刷新 `flake.lock`，逐个采纳 Nix 报告的 fixed-output hash，直到构建通过。若因其他原因构建失败，会原样报错，不会用改 hash 的方式掩盖问题。
 
-`Update NyaTerm`（`.github/workflows/update.yml`）每周运行一次，在有版本更新时自动开 Pull Request，因此日常只需 review 后 merge。该工作流始终推送到固定分支 `chore/update-nyaterm`，并复用该分支上已有的 Pull Request 而非重复创建，因此未合并的更新只会被刷新，不会堆积多个 PR。由于使用默认 `GITHUB_TOKEN` 创建的 Pull Request 不会触发 `pull_request` 工作流，该工作流会在开 PR 前自行完成双架构构建。
+`Update NyaTerm`（`.github/workflows/update.yml`）每周运行一次，在有版本更新时自动开 Pull Request，因此日常只需 review 后 merge。该工作流始终推送到固定分支 `chore/update-nyaterm`，并复用该分支上已有的 Pull Request 而非重复创建，因此未合并的更新只会被刷新，不会堆积多个 PR。由于使用默认 `GITHUB_TOKEN` 创建的 Pull Request 不会触发 `pull_request` 工作流，该工作流会在开 PR 前自行完成双架构构建。构建通过后才会提交或开 PR；若新版本的源码结构不兼容，需要先调整 package 表达式，不能只改 hash。
 
-通常只有 fixed-output hash 会变化：版本号取自 `package.json`，Cargo 锁文件直接读取源码，两者都无需手工修改。有两点需要注意：
+升级时会更新源码 Tag 和 `flake.lock`，fixed-output hash 也可能变化。版本号取自上游 `package.json`，Cargo 锁文件直接读取源码，两者都无需手工修改。有两点需要注意：
 
 - 该引用必须包含 `src-tauri/crates/nyaterm-mcp`，因为该 crate 会被构建并作为内置的 MCP sidecar 一同安装；`v1.2.6` 之前的版本无法打包。
-- `v2.0.0-preview.*` 是纯 Rust 重写版，目录结构不同（没有 `src-tauri/`），需要手工重写 `nix/package.nix`，无法靠更新 hash 解决。
+- `v2.0.0-preview.*` 预发布标签会被跳过。稳定版 `v2.0.0` 是纯 Rust 重写版，目录结构不同（没有 `src-tauri/`），构建会失败；需要先手工调整 `nix/package.nix`，无法靠更新 hash 解决。
 
 ## 维护者说明
 

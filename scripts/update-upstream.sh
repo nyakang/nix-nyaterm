@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Bump the pinned NyaTerm upstream release and refresh every fixed-output hash.
+# Bump the pin to the newest stable NyaTerm release and refresh fixed-output hashes.
 #
 # The source stays pinned to a release tag so builds remain reproducible; this
-# script is the only thing that needs to run when a new NyaTerm release lands.
+# script follows the highest stable vX.Y.Z tag. Pre-release tags are excluded.
 #
 # Usage:
 #   scripts/update-upstream.sh            update the working tree, no commit
-#   scripts/update-upstream.sh --commit   update and commit the result
+#   scripts/update-upstream.sh --commit   update and commit (managed files must be clean)
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -19,41 +19,33 @@ MAX_HASH_ROUNDS=5
 COMMIT_PATHS=(flake.nix flake.lock nix/package.nix)
 LOG=$(mktemp)
 trap 'rm -f "$LOG"' EXIT
+DID_UPDATE=0
 
 DO_COMMIT=0
 [ "${1:-}" = "--commit" ] && DO_COMMIT=1
 
 log() { printf '==> %s\n' "$*"; }
-warn() { printf 'warning: %s\n' "$*" >&2; }
 die() {
   printf 'error: %s\n' "$*" >&2
   exit 1
 }
 
+if [ "$DO_COMMIT" -eq 1 ] && [ -n "$(git -C "$ROOT" status --porcelain -- "${COMMIT_PATHS[@]}")" ]; then
+  die "--commit requires flake.nix, flake.lock and nix/package.nix to be clean"
+fi
+
 current_pin() {
   sed -n 's|.*github:'"${UPSTREAM_SLUG}"'/\(v[^"]*\)".*|\1|p' "$FLAKE" | head -1
 }
 
-# Stable releases on the same major.minor line, e.g. v1.2.12. Pre-releases and
-# other release lines are excluded on purpose.
-latest_in_line() {
-  local line=$1
-  git ls-remote --tags --refs "$UPSTREAM_URL" 2>/dev/null |
-    awk '{ sub("refs/tags/", "", $2); print $2 }' |
-    grep -E "^${line//./\\.}\.[0-9]+$" |
+# Stable semantic-version release tags, across all major/minor lines.
+latest_stable() {
+  local refs
+  refs=$(git ls-remote --tags --refs "$UPSTREAM_URL" 2>/dev/null) || return 1
+  printf '%s\n' "$refs" |
+    awk '$2 ~ /^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$/ { sub("^refs/tags/", "", $2); print $2 }' |
     sort -V |
     tail -1
-}
-
-newer_lines() {
-  local line=$1
-  {
-    printf '%s\n' "$line"
-    git ls-remote --tags --refs "$UPSTREAM_URL" 2>/dev/null |
-      awk '{ sub("refs/tags/", "", $2); print $2 }' |
-      grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' |
-      sed -E 's|^v([0-9]+)\.([0-9]+)\.[0-9]+$|v\1.\2|'
-  } | sort -uV | awk -v cur="$line" '$0 == cur { seen = 1; next } seen'
 }
 
 # Rewrite the tag inside the fetchPnpmDeps block; fall back to the file's only
@@ -74,30 +66,28 @@ set_pnpm_hash() {
 
 pin=$(current_pin)
 [ -n "$pin" ] || die "could not read the nyaterm-src tag from flake.nix"
-line=$(printf '%s' "$pin" | sed -E 's/^(v[0-9]+\.[0-9]+)\..*/\1/')
-log "pinned release: ${pin} (${line} line)"
+log "pinned release: ${pin}"
 
-log "querying upstream tags at ${UPSTREAM_SLUG}"
-latest=$(latest_in_line "$line")
-[ -n "$latest" ] || die "no stable ${line}.x release found upstream"
-
-others=$(newer_lines "$line")
-if [ -n "$others" ]; then
-  warn "upstream also has newer release lines: $(printf '%s' "$others" | tr '\n' ' ')"
-  warn "a new major/minor line is not a hash bump - nix/package.nix must be reviewed by hand first"
-fi
+log "querying stable release tags at ${UPSTREAM_SLUG}"
+latest=$(latest_stable) || die "failed to query upstream release tags"
+[ -n "$latest" ] || die "no stable vX.Y.Z release tags found upstream"
+log "latest stable release: ${latest}"
 
 if [ "$latest" = "$pin" ]; then
-  log "${pin} is already the newest ${line}.x release"
+  log "${pin} is already the newest stable release"
 elif [ "$(printf '%s\n%s\n' "$pin" "$latest" | sort -V | tail -1)" = "$pin" ]; then
-  log "${pin} is ahead of upstream's newest ${line}.x release (${latest}); keeping the pin"
+  log "${pin} is ahead of upstream's newest stable release (${latest}); keeping the pin"
 else
   log "bumping ${pin} -> ${latest}"
   sed -i "s|github:${UPSTREAM_SLUG}/${pin}|github:${UPSTREAM_SLUG}/${latest}|" "$FLAKE"
+  DID_UPDATE=1
 fi
 
 log "refreshing flake.lock"
+lock_before=$(git -C "$ROOT" hash-object "$ROOT/flake.lock")
 (cd "$ROOT" && nix flake update nyaterm-src >/dev/null)
+lock_after=$(git -C "$ROOT" hash-object "$ROOT/flake.lock")
+[ "$lock_before" = "$lock_after" ] || DID_UPDATE=1
 
 # Build, adopting each hash Nix reports until the build is clean. Fails loudly on
 # any other build error so a genuine break is never papered over.
@@ -118,6 +108,7 @@ for round in $(seq 1 "$MAX_HASH_ROUNDS"); do
   specified=$(grep -oE 'specified:[[:space:]]+sha256-[A-Za-z0-9+/=]+' "$LOG" | head -1 | awk '{print $2}')
   log "hash mismatch (${specified} -> ${got}); updating nix/package.nix"
   set_pnpm_hash "$got" || die "cannot map the reported hash onto a source in nix/package.nix"
+  DID_UPDATE=1
 done
 
 [ "$built" -eq 1 ] || die "gave up after ${MAX_HASH_ROUNDS} hash rounds"
@@ -136,5 +127,9 @@ if [ "$DO_COMMIT" -eq 1 ]; then
     log "nothing to commit"
   fi
 else
-  log "working tree updated; review and commit it yourself"
+  if [ "$DID_UPDATE" -eq 1 ]; then
+    log "working tree updated; review and commit it yourself"
+  else
+    log "upstream pin unchanged; no updater changes made"
+  fi
 fi
