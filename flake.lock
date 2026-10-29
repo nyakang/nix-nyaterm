@@ -1,0 +1,45 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1790689126,
+        "narHash": "sha256-ilerN1WLSvF+HMjziC/Wv99J5y02maDH+6hZPwsORKg=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b4fd65b198c599cbe814fcb9f42d25d021595ec9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nyaterm-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793082012,
+        "narHash": "sha256-1jVErodyQxvm0/VUhdYvzKBEBWskmsefd/w3ZF5P2W4=",
+        "owner": "nyakang",
+        "repo": "nyaterm",
+        "rev": "1a3448cf78ae307d8c530c6336b2dfa41911b7ad",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nyakang",
+        "ref": "v1.3.2",
+        "repo": "nyaterm",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "nyaterm-src": "nyaterm-src"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
