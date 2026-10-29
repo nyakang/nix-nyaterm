@@ -2,7 +2,8 @@
 # Bump the pin to the newest stable NyaTerm release and refresh fixed-output hashes.
 #
 # The source stays pinned to a release tag so builds remain reproducible; this
-# script follows the highest stable vX.Y.Z tag. Pre-release tags are excluded.
+# script follows the highest stable vX.Y.Z tag within the currently pinned major
+# line (v1 stays on v1.x.y). Pre-release tags are excluded.
 #
 # Usage:
 #   scripts/update-upstream.sh            update the working tree, no commit
@@ -38,12 +39,18 @@ current_pin() {
   sed -n 's|.*github:'"${UPSTREAM_SLUG}"'/\(v[^"]*\)".*|\1|p' "$FLAKE" | head -1
 }
 
-# Stable semantic-version release tags, across all major/minor lines.
+# Stable semantic-version release tags for one major line, so a v1 pin is never
+# silently moved to a v2 release with a different source layout.
 latest_stable() {
-  local refs
+  local major=$1 refs
   refs=$(git ls-remote --tags --refs "$UPSTREAM_URL" 2>/dev/null) || return 1
   printf '%s\n' "$refs" |
-    awk '$2 ~ /^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$/ { sub("^refs/tags/", "", $2); print $2 }' |
+    awk -v prefix="v${major}." '
+      $2 ~ /^refs\/tags\/v[0-9]+\.[0-9]+\.[0-9]+$/ {
+        sub("^refs/tags/", "", $2)
+        if (index($2, prefix) == 1) print $2
+      }
+    ' |
     sort -V |
     tail -1
 }
@@ -66,12 +73,14 @@ set_pnpm_hash() {
 
 pin=$(current_pin)
 [ -n "$pin" ] || die "could not read the nyaterm-src tag from flake.nix"
-log "pinned release: ${pin}"
+major=${pin#v}
+major=${major%%.*}
+log "pinned release: ${pin} (tracking the v${major} line)"
 
-log "querying stable release tags at ${UPSTREAM_SLUG}"
-latest=$(latest_stable) || die "failed to query upstream release tags"
-[ -n "$latest" ] || die "no stable vX.Y.Z release tags found upstream"
-log "latest stable release: ${latest}"
+log "querying stable v${major}.x.y release tags at ${UPSTREAM_SLUG}"
+latest=$(latest_stable "$major") || die "failed to query upstream release tags"
+[ -n "$latest" ] || die "no stable v${major}.x.y release tags found upstream"
+log "latest stable release on the v${major} line: ${latest}"
 
 if [ "$latest" = "$pin" ]; then
   log "${pin} is already the newest stable release"

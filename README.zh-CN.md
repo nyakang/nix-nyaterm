@@ -67,14 +67,14 @@ nix develop
 ./scripts/update-upstream.sh --commit # 更新并提交（受管理文件需无未提交修改）
 ```
 
-它会将 Tag 推进到所有 major/minor 版本线中最新的稳定版 `vX.Y.Z`，并跳过 preview、beta 等预发布标签；随后刷新 `flake.lock`，逐个采纳 Nix 报告的 fixed-output hash，直到构建通过。若因其他原因构建失败，会原样报错，不会用改 hash 的方式掩盖问题。最后它会构建 `.#checks.<system>.nyaterm`，断言包内文件是否齐全，缺失文件的版本会直接失败，不会进入 PR。
+它会将 Tag 推进到当前 major 版本线内最新的稳定版 `vX.Y.Z`（`v1` 只会更新到 `v1.x.y`），并跳过 preview、beta 等预发布标签；随后刷新 `flake.lock`，逐个采纳 Nix 报告的 fixed-output hash，直到构建通过。若因其他原因构建失败，会原样报错，不会用改 hash 的方式掩盖问题。最后它会构建 `.#checks.<system>.nyaterm`，断言包内文件是否齐全，缺失文件的版本会直接失败，不会进入 PR。
 
 `Update NyaTerm`（`.github/workflows/update.yml`）每周运行一次，在有版本更新时自动开 Pull Request，因此日常只需 review 后 merge。该工作流始终推送到固定分支 `chore/update-nyaterm`，并复用该分支上已有的 Pull Request 而非重复创建，因此未合并的更新只会被刷新，不会堆积多个 PR。由于使用默认 `GITHUB_TOKEN` 创建的 Pull Request 不会触发 `pull_request` 工作流，该工作流会在开 PR 前自行完成双架构构建。构建通过后才会提交或开 PR；若新版本的源码结构不兼容，需要先调整 package 表达式，不能只改 hash。
 
 升级时会更新源码 Tag 和 `flake.lock`，fixed-output hash 也可能变化。版本号取自上游 `package.json`，Cargo 锁文件直接读取源码，两者都无需手工修改。有两点需要注意：
 
 - 该引用必须包含 `src-tauri/crates/nyaterm-mcp`，因为该 crate 会被构建并作为内置的 MCP sidecar 一同安装；`v1.2.6` 之前的版本无法打包。
-- `v2.0.0-preview.*` 预发布标签会被跳过。稳定版 `v2.0.0` 是纯 Rust 重写版，目录结构不同（没有 `src-tauri/`），构建会失败；需要先手工调整 `nix/package.nix`，无法靠更新 hash 解决。
+- `v2.0.0-preview.*` 预发布标签会被跳过。稳定版 `v2.0.0` 是纯 Rust 重写版，目录结构不同（没有 `src-tauri/`），因此当前固定在 `v1` 版本线时更新脚本不会选中它。切换到 `v2` 需要有意为之：先手工修改引用并调整 `nix/package.nix`。
 
 ## 维护者说明
 
