@@ -77,6 +77,19 @@ A pin that is a full commit SHA is the one other accepted shape: it is used whil
 
 The pin decisions are covered by `scripts/tests/update-upstream-test.sh`, which runs the real script against a throwaway repository with stubbed `git` and `nix`, so a change to that logic is checked without network or build. It runs in CI next to the flake check.
 
+The upstream `Publish Nix update` workflow dispatches `Update NyaTerm` on this
+repository's `main` branch after a stable release is published. It requires an
+upstream repository secret named `NIX_UPDATE_TOKEN` with **Actions: write** on
+`nyakang/nix-nyaterm`. The weekly schedule (Monday at 03:17 UTC) and manual
+`workflow_dispatch` remain available as fallbacks. The updater follows the latest
+stable release in its supported major line; it does not merge the resulting PR.
+
+For source revisions containing `nyaterm-android-helper`, the package supplies
+FFmpeg 8 libraries and the bindgen build hook. FFmpeg enables only H.264
+decoding/parsing and pixel scaling, with network, GPL components and external
+codecs disabled. Its shared libraries remain in the Nix runtime closure, and the
+output check requires the Android helper alongside the existing helpers.
+
 The weekly run is not idle while the pin is a commit: a separate `verify-pin` job builds, on both architectures, the pin of the branch the run comes from, so an unreachable revision or a dependency that no longer compiles fails the run in the same week. It is a cache hit whenever the pin has not moved.
 
 `Update NyaTerm` opens a pull request when a bump lands, so the usual workflow is review and merge. It always pushes to the fixed branch `chore/update-nyaterm` and reuses the open pull request on that branch rather than opening duplicates, so an unmerged bump simply gets refreshed. Because a pull request created with the default `GITHUB_TOKEN` does not trigger `pull_request` workflows, that workflow builds both architectures itself before opening the pull request. The build must pass before an update is committed or a pull request is opened; a release with an incompatible source layout needs a package-expression update rather than a hash change.

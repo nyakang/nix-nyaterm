@@ -75,8 +75,7 @@
       # Assertions on the built package, so `nix flake check` and
       # `nix build .#checks.<system>.nyaterm` catch a package that lost an
       # output. The application spawns its helpers from its own directory, so a
-      # missing nyaterm-mcp, -rdp-helper or -vnc-helper breaks features only at
-      # runtime and has to be caught here.
+      # missing helper breaks features only at runtime and has to be caught here.
       checks = forAllSystems (
         system:
         let
@@ -93,7 +92,8 @@
             "share/icons/hicolor/128x128/apps/nyaterm.png"
             "share/icons/hicolor/256x256/apps/nyaterm.png"
             "share/icons/hicolor/512x512/apps/nyaterm.png"
-          ];
+          ]
+          ++ lib.optional (builtins.pathExists "${nyaterm-src}/crates/nyaterm-android-helper/Cargo.toml") "bin/nyaterm-android-helper";
         in
         {
           nyaterm = pkgs.runCommand "nyaterm-outputs-check" { } ''

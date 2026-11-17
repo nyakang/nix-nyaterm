@@ -6,6 +6,7 @@
   copyDesktopItems,
   makeDesktopItem,
   cmake,
+  ffmpeg_8,
   gtk3,
   glib,
   dbus,
@@ -31,6 +32,29 @@
 let
   cargoToml = builtins.fromTOML (builtins.readFile "${nyaterm-src}/Cargo.toml");
   version = cargoToml.workspace.package.version;
+  hasAndroidHelper = lib.elem "crates/nyaterm-android-helper" cargoToml.workspace.default-members;
+  # Match the helper's H.264-only decoder surface. ffmpeg-next 8.x requires
+  # libavformat headers even though no demuxers or protocols are used.
+  androidFfmpeg =
+    (ffmpeg_8.override {
+      withHeadlessDeps = false;
+      withSmallDeps = false;
+      withFullDeps = false;
+      withGPL = false;
+      withVersion3 = false;
+      buildAvcodec = true;
+      buildAvformat = true;
+      buildAvutil = true;
+      buildSwscale = true;
+    }).overrideAttrs
+      (old: {
+        configureFlags = old.configureFlags ++ [
+          "--disable-autodetect"
+          "--disable-everything"
+          "--enable-decoder=h264"
+          "--enable-parser=h264"
+        ];
+      });
   src = lib.cleanSourceWith {
     src = nyaterm-src;
     filter =
@@ -70,7 +94,8 @@ rustPlatform.buildRustPackage {
     # aws-lc-sys configures its C build with CMake. Only the CMake *tool* is
     # wanted here: cargo owns the configure and build phases.
     cmake
-  ];
+  ]
+  ++ lib.optional hasAndroidHelper rustPlatform.bindgenHook;
 
   dontUseCmakeConfigure = true;
 
@@ -91,7 +116,8 @@ rustPlatform.buildRustPackage {
     # It resolves today only because gtk3 propagates at-spi2-core, which
     # propagates dbus; name the input here instead of depending on that chain.
     dbus
-  ];
+  ]
+  ++ lib.optional hasAndroidHelper androidFfmpeg;
 
   # Baked into `nyaterm_core::packaging` at compile time: the Nix package owns
   # the update channel, so the application hides its in-app updater and reports
@@ -120,10 +146,9 @@ rustPlatform.buildRustPackage {
     })
   ];
 
-  # `nyaterm` spawns nyaterm-mcp, nyaterm-rdp-helper and nyaterm-vnc-helper from
-  # its own directory, which is why all four binaries must stay in $out/bin.
-  # (crates/nyaterm-activex-helper is a default member too, but it only uses its
-  # Windows dependencies, so the Linux build installs no binary for it.)
+  # `nyaterm` spawns its MCP, RDP, VNC and Android helpers from its own directory,
+  # so all helper binaries must stay in $out/bin. Nix retains the Android
+  # helper's FFmpeg runtime libraries through its ELF RPATH.
   postInstall = ''
     install -Dm 644 ${icons}/32x32.png $out/share/icons/hicolor/32x32/apps/nyaterm.png
     install -Dm 644 ${icons}/64x64.png $out/share/icons/hicolor/64x64/apps/nyaterm.png

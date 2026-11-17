@@ -77,6 +77,17 @@ nix develop
 
 引用判定的逻辑由 `scripts/tests/update-upstream-test.sh` 覆盖：它在临时仓库中用 stub 的 `git`、`nix` 运行真实脚本，因此改动这段逻辑无需联网或构建即可验证；该测试与 flake check 一起在 CI 中运行。
 
+上游 `Publish Nix update` 工作流会在稳定版实际发布后，触发本仓库 `main` 分支上的
+`Update NyaTerm`。上游仓库需配置 `NIX_UPDATE_TOKEN` secret，授予其对
+`nyakang/nix-nyaterm` 的 **Actions: write** 权限。每周一定时任务（北京时间
+11:17）和手动 `workflow_dispatch` 继续作为兜底。更新器跟随支持的 major 版本线内
+最新稳定版，生成的 PR 仍需 review 后合并。
+
+源码包含 `nyaterm-android-helper` 时，包会提供 FFmpeg 8 库和 bindgen 构建 hook。
+FFmpeg 仅启用 H.264 解码、解析和像素缩放，禁用网络、GPL 组件及外部编解码器。
+动态库由 Nix 的运行时依赖闭包保留，输出检查也会要求 Android helper 与其他 helper
+一同存在。
+
 引用为 commit 时每周任务并非空转：独立的 `verify-pin` 任务会在两个架构上构建本次运行所属分支的引用，因此 revision 失效或依赖无法编译都会在同一周内让该次运行失败。引用未变动时这只是缓存命中。
 
 有版本更新时，`Update NyaTerm` 会自动开 Pull Request，因此日常只需 review 后 merge。该工作流始终推送到固定分支 `chore/update-nyaterm`，并复用该分支上已有的 Pull Request 而非重复创建，因此未合并的更新只会被刷新，不会堆积多个 PR。由于使用默认 `GITHUB_TOKEN` 创建的 Pull Request 不会触发 `pull_request` 工作流，该工作流会在开 PR 前自行完成双架构构建。构建通过后才会提交或开 PR；若新版本的源码结构不兼容，需要先调整 package 表达式，不能只改 hash。
