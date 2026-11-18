@@ -54,6 +54,15 @@ let
           "--enable-decoder=h264"
           "--enable-parser=h264"
         ];
+        # Upstream's `check` target assumes a full build: `make check` also
+        # builds `alltools` and the example programs, and those link against
+        # libavdevice, libavfilter and libswresample, which this minimal
+        # configuration does not build. `libavutil`'s own test programs are
+        # gated on CONFIG_PIXELUTILS, which `--disable-everything` turns off,
+        # so the suite fails before it can test anything either way. The
+        # package-level check in flake.nix verifies the shared libraries and the
+        # helper binary that actually get used.
+        doCheck = false;
       });
   src = lib.cleanSourceWith {
     src = nyaterm-src;
@@ -85,7 +94,7 @@ rustPlatform.buildRustPackage {
   # dependencies (gpui, russh, IronRDP, ...) whose trees have no checksum in the
   # lock file, so the vendored sources are fetched as one fixed-output
   # derivation. scripts/update-upstream.sh adopts the hash Nix reports.
-  cargoHash = "sha256-e71MwdXp/UNqpiQOCvdcxq5HB5aJPXxNII1vFOgvWSw=";
+  cargoHash = "sha256-gX6iUG3pC9aSu2uQo6gTdN4dfgM0Tvmkdb3et9R90QQ=";
 
   nativeBuildInputs = [
     pkg-config

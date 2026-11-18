@@ -84,11 +84,7 @@ upstream repository secret named `NIX_UPDATE_TOKEN` with **Actions: write** on
 `workflow_dispatch` remain available as fallbacks. The updater follows the latest
 stable release in its supported major line; it does not merge the resulting PR.
 
-For source revisions containing `nyaterm-android-helper`, the package supplies
-FFmpeg 8 libraries and the bindgen build hook. FFmpeg enables only H.264
-decoding/parsing and pixel scaling, with network, GPL components and external
-codecs disabled. Its shared libraries remain in the Nix runtime closure, and the
-output check requires the Android helper alongside the existing helpers.
+For source revisions containing `nyaterm-android-helper` (v2.0.5 and newer), the package supplies FFmpeg 8 libraries and the bindgen build hook. FFmpeg enables only H.264 decoding/parsing and pixel scaling, with network, GPL components and external codecs disabled. That minimal configuration cannot run upstream's `make check`, which also builds the `alltools` programs and the examples against libraries this configuration does not build, so the FFmpeg derivation sets `doCheck = false`; the package-level output check in `flake.nix` covers what is actually shipped. FFmpeg's shared libraries remain in the Nix runtime closure, and the output check requires the Android helper alongside the existing helpers.
 
 The weekly run is not idle while the pin is a commit: a separate `verify-pin` job builds, on both architectures, the pin of the branch the run comes from, so an unreachable revision or a dependency that no longer compiles fails the run in the same week. It is a cache hit whenever the pin has not moved.
 
@@ -96,13 +92,13 @@ The weekly run is not idle while the pin is a commit: a separate `verify-pin` jo
 
 The source pin, `flake.lock`, and the vendored `cargoHash` change on a release bump. The package version comes from the workspace `Cargo.toml`, and the dependency graph comes from the upstream `Cargo.lock`, so neither is copied into this repository. Three caveats worth knowing:
 
-- The pin must build the whole default workspace: `crates/nyaterm-app` produces `nyaterm`, and the `nyaterm-mcp`, `nyaterm-rdp-helper` and `nyaterm-vnc-helper` helper crates must stay cargo default members. (`crates/nyaterm-activex-helper` also sits among them, but its Windows-only dependencies mean the Linux build produces no binary for it.) A revision that stops building the other helpers cannot be packaged.
+- The pin must build the whole default workspace: `crates/nyaterm-app` produces `nyaterm`, and the `nyaterm-android-helper`, `nyaterm-mcp`, `nyaterm-rdp-helper` and `nyaterm-vnc-helper` helper crates must stay cargo default members. `nyaterm-android-helper` joined them in v2.0.5, which is what first builds the FFmpeg-backed path in `nix/package.nix`. A revision that stops building the other helpers cannot be packaged.
 - `v2.0.0-preview.*` tags are skipped as pre-releases. Moving between major lines is deliberate: the updater never crosses one, so a v3 rewrite would need the pin moved by hand with `nix/package.nix` adapted first.
-- Tag `v2.0.0` predates the change that makes the binary honor `NYATERM_PACKAGE_MANAGER`, so the pin is the `main` commit carrying it until the next `v2.x.y` release. `flake.lock` keeps that commit reproducible; the weekly run replaces it with the release tag as soon as it can show the release contains that commit, and otherwise reports that the pin needs a hand-written bump.
+- Tag `v2.0.0` predates the change that makes the binary honor `NYATERM_PACKAGE_MANAGER`. That is why the pin spent one release cycle as the `main` commit carrying it instead of the tag; `v2.0.1` and later releases contain it, so the pin is a plain release tag again.
 
 ## Maintainer note
 
-`nyaterm-src` pins the upstream commit that introduces `NYATERM_PACKAGE_MANAGER`, because the newest release tag (`v2.0.0`) predates it. The hash and the pin move together: the weekly updater replaces the commit with the next stable `v2.x.y` tag that can be shown to contain it, and adopts the new `cargoHash` in the same run.
+`nyaterm-src` pins a release tag; `scripts/update-upstream.sh` moves it to the newest stable `v2.x.y` release, refreshes `flake.lock` and adopts the new `cargoHash` in the same run.
 
 Local work does not need a pin change; override the input at build time:
 

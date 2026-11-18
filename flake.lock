@@ -19,16 +19,16 @@
     "nyaterm-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1794204259,
-        "narHash": "sha256-tZXZOdhT646n6eyKp5bHN992iPtk95uwqdP99oYDNXo=",
+        "lastModified": 1794924274,
+        "narHash": "sha256-QRbeAVvlJ0qjqFoG/7p8lx5RyuvaN6it7uPkTwuqFOY=",
         "owner": "nyakang",
         "repo": "nyaterm",
-        "rev": "fc18011691f1cd3816e339721967abb34461cea5",
+        "rev": "17c8d5bfd99313865cd0230b08ae73571df058cf",
         "type": "github"
       },
       "original": {
         "owner": "nyakang",
-        "ref": "v2.0.4",
+        "ref": "v2.0.6",
         "repo": "nyaterm",
         "type": "github"
       }
