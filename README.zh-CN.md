@@ -83,8 +83,11 @@ nix develop
 11:17）和手动 `workflow_dispatch` 继续作为兜底。更新器跟随支持的 major 版本线内
 最新稳定版，生成的 PR 仍需 review 后合并。
 
-源码包含 `nyaterm-android-helper` 时，包会提供 FFmpeg 8 库和 bindgen 构建 hook。
-FFmpeg 仅启用 H.264 解码、解析和像素缩放，禁用网络、GPL 组件及外部编解码器。
+源码包含 `nyaterm-android-helper`（v2.0.5 及以后）时，包会提供 FFmpeg 8 库和 bindgen
+构建 hook。FFmpeg 仅启用 H.264 解码、解析和像素缩放，禁用网络、GPL 组件及外部编解码器。
+这套最小配置无法通过上游的 `make check`：该目标还会构建 `alltools` 工具与示例程序，
+而它们链接的 libavdevice、libavfilter、libswresample 在此配置下并未构建，因此 FFmpeg
+derivation 设置 `doCheck = false`；实际产物的完整性由 `flake.nix` 中的输出检查保证。
 动态库由 Nix 的运行时依赖闭包保留，输出检查也会要求 Android helper 与其他 helper
 一同存在。
 
@@ -94,13 +97,13 @@ FFmpeg 仅启用 H.264 解码、解析和像素缩放，禁用网络、GPL 组�
 
 升级时会更新源码引用、`flake.lock` 和 vendored 依赖的 `cargoHash`。版本号取自上游 workspace `Cargo.toml`，依赖图直接来自上游 `Cargo.lock`，两者都不需要复制进本仓库。有三点需要注意：
 
-- 该引用必须能构建整个默认 workspace：`crates/nyaterm-app` 产出 `nyaterm`，而 `nyaterm-mcp`、`nyaterm-rdp-helper`、`nyaterm-vnc-helper` 必须继续是 cargo 的 default members（`crates/nyaterm-activex-helper` 也在其中，但它的依赖仅限 Windows，Linux 构建不会产出该二进制）。不再构建这些 helper 的版本无法打包。
+- 该引用必须能构建整个默认 workspace：`crates/nyaterm-app` 产出 `nyaterm`，而 `nyaterm-android-helper`、`nyaterm-mcp`、`nyaterm-rdp-helper`、`nyaterm-vnc-helper` 必须继续是 cargo 的 default members。`nyaterm-android-helper` 自 v2.0.5 起加入，也是从那时起 `nix/package.nix` 中的 FFmpeg 路径才首次真正被构建。不再构建这些 helper 的版本无法打包。
 - `v2.0.0-preview.*` 预发布标签会被跳过。跨 major 版本线是有意为之：更新脚本不会跨越 major，v3 这类重写需要先手工修改引用并调整 `nix/package.nix`。
-- `v2.0.0` 早于让二进制读取 `NYATERM_PACKAGE_MANAGER` 的改动，因此在下一个 `v2.x.y` 发布之前，引用是携带该改动的 `main` commit。`flake.lock` 保证该 commit 可复现；一旦每周任务能证明新版本包含该 commit，就会把它替换成对应 Release Tag，否则会报告需要手工更新引用。
+- `v2.0.0` 早于让二进制读取 `NYATERM_PACKAGE_MANAGER` 的改动。正因为如此，引用曾有一个发布周期是携带该改动的 `main` commit 而非 tag；从 `v2.0.1` 起各版本都包含该改动，因此引用重新是普通的 Release Tag。
 
 ## 维护者说明
 
-`nyaterm-src` 固定引入 `NYATERM_PACKAGE_MANAGER` 的上游 commit，因为最新 Release Tag（`v2.0.0`）早于该改动。hash 与引用是一体的：每周更新脚本会用下一个能证明包含该 commit 的稳定 `v2.x.y` tag 替换它，并在同一次运行中采纳新的 `cargoHash`。
+`nyaterm-src` 固定引用一个 Release Tag；`scripts/update-upstream.sh` 会把引用推进到该版本线最新的稳定 `v2.x.y`，同时刷新 `flake.lock` 并在同一次运行中采纳新的 `cargoHash`。
 
 本地开发无需修改引用，构建时覆盖输入即可：
 
