@@ -18,9 +18,11 @@ nix run github:nyakang/nix-nyaterm
 nix profile add github:nyakang/nix-nyaterm
 ```
 
-软件包支持 `x86_64-linux` 和 `aarch64-linux`，并随应用一起安装它启动的三个 helper 进程（`nyaterm-mcp`、`nyaterm-rdp-helper`、`nyaterm-vnc-helper`），以及桌面入口、图标和 `nyaterm://`、`ssh://`、`telnet://` 协议处理器。
+软件包支持 `x86_64-linux` 和 `aarch64-linux`，并随应用一起安装它启动的 helper 进程（`nyaterm-mcp`、`nyaterm-rdp-helper`、`nyaterm-vnc-helper`，以及自 2.0.5 起的 `nyaterm-android-helper`），以及桌面入口、图标和 `nyaterm://`、`ssh://`、`telnet://` 协议处理器。
 
-NyaTerm 2.x 是纯 Rust 编写的 GPUI 应用：UI 资源与翻译目录在编译期嵌入二进制，因此软件包不再有独立的前端或 sidecar 输出。四个二进制都放在 `$out/bin` 下，因为应用会在自身可执行文件所在目录查找 helper。
+NyaTerm 2.x 是纯 Rust 编写的 GPUI 应用：UI 资源与翻译目录在编译期嵌入二进制，因此软件包不再有独立的前端或 sidecar 输出。所有二进制都放在 `$out/bin` 下，因为应用会在自身可执行文件所在目录查找 helper。
+
+构建会链接 OpenSSL：FTP/FTPS 支持经由 `suppaftp` 的 `native-tls` feature 引入它。
 
 构建时会把 `NYATERM_PACKAGE_MANAGER=nix` 固化进二进制，从而由 Nix 接管更新通道：应用内更新入口隐藏、托盘菜单移除更新项、关于对话框显示包管理器。
 

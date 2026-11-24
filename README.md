@@ -18,9 +18,11 @@ Install into the current user's profile:
 nix profile add github:nyakang/nix-nyaterm
 ```
 
-The package supports `x86_64-linux` and `aarch64-linux`. It ships the application together with the three helper processes it spawns (`nyaterm-mcp`, `nyaterm-rdp-helper`, `nyaterm-vnc-helper`), a desktop entry, icons, and handlers for `nyaterm://`, `ssh://`, and `telnet://`.
+The package supports `x86_64-linux` and `aarch64-linux`. It ships the application together with the helper processes it spawns (`nyaterm-mcp`, `nyaterm-rdp-helper`, `nyaterm-vnc-helper`, and `nyaterm-android-helper` from 2.0.5), a desktop entry, icons, and handlers for `nyaterm://`, `ssh://`, and `telnet://`.
 
-NyaTerm 2.x is a pure-Rust GPUI application: the UI assets and translation catalogs are embedded in the binary, so the package has no separate frontend or sidecar outputs. All four binaries live in `$out/bin` because the application resolves its helpers next to its own executable.
+NyaTerm 2.x is a pure-Rust GPUI application: the UI assets and translation catalogs are embedded in the binary, so the package has no separate frontend or sidecar outputs. All the binaries live in `$out/bin` because the application resolves its helpers next to its own executable.
+
+The build links OpenSSL, which FTP/FTPS support pulls in through `suppaftp`'s `native-tls` feature.
 
 The build bakes `NYATERM_PACKAGE_MANAGER=nix` into the binary, which makes Nix the owner of the update channel: the in-app updater hides its update entry, the tray menu drops the update action, and the About dialog reports the package manager.
 

@@ -21,6 +21,7 @@
   vulkan-loader,
   xdg-utils,
   cacert,
+  openssl,
   nyaterm-src,
   githubGistClientId ? null,
 }:
@@ -94,7 +95,7 @@ rustPlatform.buildRustPackage {
   # dependencies (gpui, russh, IronRDP, ...) whose trees have no checksum in the
   # lock file, so the vendored sources are fetched as one fixed-output
   # derivation. scripts/update-upstream.sh adopts the hash Nix reports.
-  cargoHash = "sha256-gX6iUG3pC9aSu2uQo6gTdN4dfgM0Tvmkdb3et9R90QQ=";
+  cargoHash = "sha256-QHME56D2HHt5s2nd23rTQb/AGyddmkfDFMvPEOY+MG0=";
 
   nativeBuildInputs = [
     pkg-config
@@ -125,6 +126,9 @@ rustPlatform.buildRustPackage {
     # It resolves today only because gtk3 propagates at-spi2-core, which
     # propagates dbus; name the input here instead of depending on that chain.
     dbus
+    # FTP/FTPS support (added in 2.0.7) goes through `suppaftp`'s native-tls
+    # feature, which is openssl-sys. Upstream's CI installs libssl-dev for it.
+    openssl
   ]
   ++ lib.optional hasAndroidHelper androidFfmpeg;
 
