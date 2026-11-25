@@ -21,6 +21,7 @@
   vulkan-loader,
   xdg-utils,
   cacert,
+  openssl,
   nyaterm-src,
   githubGistClientId ? null,
 }:
@@ -54,6 +55,15 @@ let
           "--enable-decoder=h264"
           "--enable-parser=h264"
         ];
+        # Upstream's `check` target assumes a full build: `make check` also
+        # builds `alltools` and the example programs, and those link against
+        # libavdevice, libavfilter and libswresample, which this minimal
+        # configuration does not build. `libavutil`'s own test programs are
+        # gated on CONFIG_PIXELUTILS, which `--disable-everything` turns off,
+        # so the suite fails before it can test anything either way. The
+        # package-level check in flake.nix verifies the shared libraries and the
+        # helper binary that actually get used.
+        doCheck = false;
       });
   src = lib.cleanSourceWith {
     src = nyaterm-src;
@@ -85,7 +95,7 @@ rustPlatform.buildRustPackage {
   # dependencies (gpui, russh, IronRDP, ...) whose trees have no checksum in the
   # lock file, so the vendored sources are fetched as one fixed-output
   # derivation. scripts/update-upstream.sh adopts the hash Nix reports.
-  cargoHash = "sha256-e71MwdXp/UNqpiQOCvdcxq5HB5aJPXxNII1vFOgvWSw=";
+  cargoHash = "sha256-QHME56D2HHt5s2nd23rTQb/AGyddmkfDFMvPEOY+MG0=";
 
   nativeBuildInputs = [
     pkg-config
@@ -116,6 +126,9 @@ rustPlatform.buildRustPackage {
     # It resolves today only because gtk3 propagates at-spi2-core, which
     # propagates dbus; name the input here instead of depending on that chain.
     dbus
+    # FTP/FTPS support (added in 2.0.7) goes through `suppaftp`'s native-tls
+    # feature, which is openssl-sys. Upstream's CI installs libssl-dev for it.
+    openssl
   ]
   ++ lib.optional hasAndroidHelper androidFfmpeg;
 

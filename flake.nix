@@ -4,9 +4,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # Upstream NyaTerm source, pinned to a release tag so builds stay
-    # reproducible. v2.0.1 carries the commit that teaches the binary to honor
-    # NYATERM_PACKAGE_MANAGER (the v2.0.0 tag predates it); scripts/update-upstream.sh
-    # advances the pin tag by tag.
+    # reproducible. scripts/update-upstream.sh advances the pin tag by tag
+    # within the packaged v2 line.
     #
     # For local debugging against another ref or a local checkout, override the
     # input without touching the lockfile:
@@ -14,7 +13,7 @@
     #     github:nyakang/nyaterm/main --no-write-lock-file
     #   nix build .#nyaterm --override-input nyaterm-src path:/path/to/nyaterm
     nyaterm-src = {
-      url = "github:nyakang/nyaterm/v2.0.4";
+      url = "github:nyakang/nyaterm/v2.0.8";
       flake = false;
     };
   };
